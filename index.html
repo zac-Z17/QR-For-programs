@@ -180,7 +180,14 @@ h3.titular span { color: var(--rojo); }
 .telefono::after { content: ''; position: absolute; inset: 18px 7px; border-radius: 4px; background: linear-gradient(140deg, var(--rojo), var(--naranja)); }
 .girar h2 { margin: 0; font-family: 'Erica One', sans-serif; font-weight: 400; font-size: 30px; line-height: 1; }
 .girar p { margin: 0; font-size: 17px; line-height: 1.4; max-width: 320px; opacity: .92; }
-.girar button { margin-top: 10px; font: 600 15px 'Outfit', sans-serif; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35); border-radius: 99px; padding: 11px 22px; cursor: pointer; }
+.girar .principal { margin-top: 6px; font: 800 17px 'Outfit', sans-serif; color: #fff; border: 0; border-radius: 99px; padding: 14px 26px; cursor: pointer;
+  background: linear-gradient(100deg, var(--rojo), var(--naranja)); box-shadow: 0 8px 24px rgba(232,20,28,.45); display: inline-flex; align-items: center; gap: 10px; }
+.girar .principal[hidden], .consejo[hidden], .btn-completa[hidden] { display: none; }
+.consejo { font-size: 14px !important; opacity: .8 !important; max-width: 300px !important; border-top: 1px solid rgba(255,255,255,.2); padding-top: 14px; }
+.btn-completa { position: fixed; z-index: 15; top: max(10px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.4); background: rgba(30,0,6,.35); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+@media (max-height: 560px) { .btn-completa { width: 36px; height: 36px; top: max(9px, env(safe-area-inset-top)); } }
+.girar #seguir { margin-top: 10px; font: 600 15px 'Outfit', sans-serif; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35); border-radius: 99px; padding: 11px 22px; cursor: pointer; }
 @keyframes gira { 0%, 18% { transform: rotate(0); } 45%, 75% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
 
 /* ---------- pantallas bajas (teléfono en horizontal) ---------- */
@@ -318,12 +325,16 @@ h3.titular span { color: var(--rojo); }
   </article>
 </main>
 
+<button type="button" class="btn-completa" id="btnfs" hidden aria-label="Ver en pantalla completa" title="Pantalla completa"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+
 <div class="girar" role="dialog" aria-modal="true" aria-labelledby="girar-t">
   <img src="a/procesos.webp" width="1400" height="468" alt="">
   <div class="telefono" aria-hidden="true"></div>
   <h2 id="girar-t">Gira tu teléfono</h2>
   <p>Esta revista se lee como una revista de verdad: pon tu teléfono en <b>horizontal</b> para ver las dos hojas.</p>
+  <button type="button" id="completa" class="principal" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Abrir en pantalla completa</button>
   <button type="button" id="seguir">Seguir en vertical</button>
+  <p class="consejo" hidden>En iPhone, para quitar la barra de arriba: toca el ícono <b>«aA»</b> de la barra de direcciones y elige <b>«Ocultar barra de herramientas»</b>.</p>
 </div>
 
 <script>
@@ -445,6 +456,39 @@ document.getElementById('seguir').addEventListener('click', () => {
 });
 vertical.addEventListener ? vertical.addEventListener('change', revisar) : vertical.addListener(revisar);
 revisar();
+
+// ---------- pantalla completa ----------
+// Android (Chrome, Samsung…): pantalla completa y giro a horizontal aunque la rotación esté bloqueada.
+// iPhone: Safari no lo permite en páginas web; se muestra cómo ocultar la barra.
+const raizFS = document.documentElement;
+const puedeFS = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+const enFS = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const btnFS = document.getElementById('btnfs'), btnAviso = document.getElementById('completa');
+async function completa() {
+  try {
+    if (!enFS()) await (raizFS.requestFullscreen ? raizFS.requestFullscreen({ navigationUI: 'hide' }) : raizFS.webkitRequestFullscreen());
+  } catch (e) { return; }
+  try { if (!seguir && screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape'); } catch (e) {}
+}
+const estadoFS = () => { btnFS.hidden = !puedeFS || enFS(); };
+if (puedeFS) {
+  btnAviso.hidden = false;
+  btnAviso.addEventListener('click', completa);
+  btnFS.addEventListener('click', completa);
+  document.addEventListener('fullscreenchange', estadoFS); document.addEventListener('webkitfullscreenchange', estadoFS);
+  // el primer toque en la revista también la pone en pantalla completa (en teléfonos y tabletas)
+  if (matchMedia('(pointer: coarse)').matches) {
+    const primer = e => {
+      if (e.target.closest('.girar, .btn-completa')) return;
+      document.removeEventListener('click', primer, true);
+      completa();
+    };
+    document.addEventListener('click', primer, true);
+  }
+} else if (matchMedia('(pointer: coarse)').matches) {
+  document.querySelector('.consejo').hidden = false;
+}
+estadoFS();
 </script>
 </body>
 </html>
